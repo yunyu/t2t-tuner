@@ -13,7 +13,7 @@ from transformers import (
     set_seed,
 )
 from transformers.trainer_utils import get_last_checkpoint
-    
+
 
 class Trainer:
     def __init__(self, arguments):
@@ -312,15 +312,13 @@ class Trainer:
             
         if self.arguments.model_parallel_gpus > 1:
             print("Model parallel on", self.arguments.model_parallel_gpus, "GPU:")
-            device_map = {}
             total_num_layers = self.config.num_layers
-            layer_per_gpu = int(total_num_layers /
-                                self.arguments.model_parallel_gpus)
-            for i in range(self.arguments.model_parallel_gpus):
-                layers = list(
-                    range(i * layer_per_gpu, (i + 1) * layer_per_gpu))
-                device_map[i] = layers
-                print("* place layers", layers, "on GPU", i)
+            num_blocks = len(self.model.encoder.block) if "t5" in self.arguments.model_name_or_path else None
+            device_map = utils.get_device_map(total_num_layers,
+                list(range(self.arguments.model_parallel_gpus)),
+                num_blocks
+            )
+            print("Parallelizing with device_map", device_map)
             self.model.parallelize(device_map)
             if self.arguments.embedding_on_cpu:
                 for el in self.get_embedding_layers():

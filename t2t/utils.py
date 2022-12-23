@@ -1,4 +1,5 @@
 import ctypes
+from math import ceil
 from re import X
 import torch
 from transformers import TrainerCallback
@@ -27,3 +28,12 @@ class L2FetchCallback(TrainerCallback):
 
     def on_train_begin(self, args, state, control, **kwargs):
         increase_l2_fetch_granularity()
+
+# Adapted from transformers.utils.model_parallel_utils
+def get_device_map(n_layers, devices, n_blocks=None):
+    """Returns a dictionary of layers distributed evenly across all devices."""
+    layers = list(range(n_layers))
+    n_blocks = int(ceil(n_layers / len(devices))) if n_blocks == None else n_blocks
+    layers_list = list(layers[i : i + n_blocks] for i in range(0, n_layers, n_blocks))
+
+    return dict(zip(devices, layers_list))
